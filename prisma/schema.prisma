@@ -1,0 +1,124 @@
+// Prisma schema for the Glasses Inventory app.
+// Uses Postgres (Neon) for both local dev and production. Use a separate
+// Neon branch for local development to keep prod data clean.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String?  @unique // optional; used for Google sign-in
+  username  String?  @unique // optional; sign in with email or username
+  name      String?
+  password  String? // null for OAuth-only accounts
+  image     String?
+  active    Boolean  @default(true) // false = revoked; cannot sign in
+  isAdmin   Boolean  @default(false) // can manage team and see admin pages
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  framesCreated   Frame[]          @relation("FrameCreator")
+  itemsCreated    Item[]           @relation("ItemCreator")
+  itemsSold       Item[]           @relation("ItemSeller")
+  inventoryEvents InventoryEvent[] @relation("InventoryEventActor")
+}
+
+// A Frame is a unique glasses style (Manufacturer + Style + Color combo).
+// Multiple physical Items can share the same Frame.
+model Frame {
+  id           String   @id @default(cuid())
+  manufacturer String // a.k.a. Vendor
+  style        String
+  color        String
+  description  String? // a.k.a. Model Style Number (optional)
+  cost         Float    @default(0)
+  retailCost   Float    @default(0)
+  size         String? // optional
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  items Item[]
+
+  // Who first created this frame style. Nullable so frames survive if the
+  // user is later deleted.
+  createdById String?
+  createdBy   User?   @relation("FrameCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([manufacturer])
+  @@index([description])
+}
+
+// An Item is a single physical pair of glasses tied to a scanned barcode.
+// Inventory quantity for a frame = count of items where status = "IN_STOCK".
+// Stored as a string instead of a Postgres enum so it's easy to add new
+// statuses in app code without a schema migration.
+model Item {
+  id        String    @id @default(cuid())
+  // Optional: older / damaged frames may not have a barcode. Multiple
+  // null values are allowed (Postgres treats NULLs as distinct under
+  // UNIQUE), and these items show up as "—" in the items table.
+  barcode   String?   @unique
+  frameId   String
+  status    String    @default("IN_STOCK") // "IN_STOCK" | "SOLD"
+  soldAt    DateTime?
+  soldPrice Float?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  frame Frame @relation(fields: [frameId], references: [id], onDelete: Cascade)
+
+  // Audit trail: who added this physical item, and who marked it sold.
+  // Both nullable so a deleted user doesn't erase the sales history.
+  createdById String?
+  createdBy   User?   @relation("ItemCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  soldById    String?
+  soldBy      User?   @relation("ItemSeller", fields: [soldById], references: [id], onDelete: SetNull)
+
+  @@index([frameId])
+  @@index([status])
+}
+
+// A short-lived link between a desktop browser and a phone-as-scanner.
+// The desktop POSTs to /api/pair to get a code, the phone visits /p/<code>
+// to send scans, and the desktop polls /api/pair/<code> to receive them.
+model PairingSession {
+  id            String    @id @default(cuid())
+  code          String    @unique
+  lastBarcode   String?
+  lastBarcodeAt DateTime?
+  createdAt     DateTime  @default(now())
+  expiresAt     DateTime
+
+  @@index([expiresAt])
+}
+
+// Append-only log for manual deletes and other inventory actions.
+// Keeps history even after rows are removed from Frame / Item.
+model InventoryEvent {
+  id         String   @id @default(cuid())
+  kind       String // ITEM_DELETED | FRAME_DELETED
+  occurredAt DateTime @default(now())
+  actorId    String?
+  actor      User?    @relation("InventoryEventActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  frameId      String?
+  itemId       String?
+  manufacturer String?
+  style        String?
+  color        String?
+  description  String?
+  barcode      String?
+  itemStatus   String?
+  inStockCount Int?
+  soldCount    Int?
+
+  @@index([occurredAt])
+  @@index([kind])
+}
