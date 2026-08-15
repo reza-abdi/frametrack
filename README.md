@@ -76,14 +76,16 @@ point at the right place.
 
 ### Useful scripts
 
-| Script              | What it does                                               |
-| ------------------- | ---------------------------------------------------------- |
-| `npm run dev`       | Next dev server on port 3000                               |
-| `npm run build`     | Current local-only build; includes destructive schema push |
-| `npm run start`     | Run the production build                                   |
-| `npm run db:push`   | Sync Prisma schema → database (no migration files)         |
-| `npm run db:seed`   | Run `prisma/seed.ts`                                       |
-| `npm run db:studio` | Open Prisma Studio (a row-level GUI)                       |
+| Script                      | What it does                                       |
+| --------------------------- | -------------------------------------------------- |
+| `npm run dev`               | Next dev server on port 3000                       |
+| `npm run build`             | Generate Prisma Client and build Next.js           |
+| `npm run start`             | Run the production build                           |
+| `npm run db:push`           | Sync Prisma schema → database (no migration files) |
+| `npm run db:migrate:dev`    | Create/apply a migration in development            |
+| `npm run db:migrate:deploy` | Apply reviewed migrations in deployment            |
+| `npm run db:seed`           | Run `prisma/seed.ts`                               |
+| `npm run db:studio`         | Open Prisma Studio (a row-level GUI)               |
 
 ## Using the pair-phone scanner
 
@@ -108,12 +110,12 @@ it sold.
 
 ## Deploying to Vercel
 
-> **Production is not ready yet.** The current build script uses
-> `prisma db push --accept-data-loss`. Never run it against a production
-> database. Complete the versioned-migration work first: make the ordinary
-> build `prisma generate && next build`, add a separate
-> `prisma migrate deploy` command, create and review the initial migration,
-> and baseline any database previously managed with `db push`.
+Production schema changes use reviewed Prisma migrations. The application build
+does not mutate the database. Run `npm run db:migrate:deploy` through a protected
+deployment workflow before releasing application code that depends on a new
+migration. If an existing database was previously managed with `db push`,
+baseline it before the first deployment rather than applying the initial
+migration over populated tables.
 
 1. Push the repo to GitHub and import it on Vercel.
 2. In **Project Settings → Environment Variables** add:
@@ -126,9 +128,9 @@ it sold.
    - (optional) `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
 3. Configure separate Development, Preview, and Production databases. Preview
    deployments must never use the production `DATABASE_URL`.
-4. After versioned migrations are implemented and reviewed, run
-   `prisma migrate deploy` once through a protected production workflow, then
-   deploy the application build. Do not run `prisma db push` in Vercel builds.
+4. Run `npm run db:migrate:deploy` through the protected production workflow,
+   then deploy the application build. Do not run `prisma db push` in Vercel
+   builds.
 5. Sign in with `ADMIN_EMAIL` / `ADMIN_PASSWORD` on first deploy to bootstrap
    the admin account.
 
