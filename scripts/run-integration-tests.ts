@@ -22,10 +22,11 @@ const env: NodeJS.ProcessEnv = {
   DATABASE_URL: testUrl,
   NODE_ENV: "test",
 };
+const npx = process.platform === "win32" ? "npx.cmd" : "npx";
 
 for (const [command, args] of [
-  ["npx.cmd", ["prisma", "migrate", "deploy"]],
-  ["npx.cmd", ["tsx", "--test", "tests/integration/*.test.ts"]],
+  [npx, ["prisma", "migrate", "deploy"]],
+  [npx, ["tsx", "--test", "tests/integration/*.test.ts"]],
 ] as const) {
   const result = spawnSync(command, args, {
     env,

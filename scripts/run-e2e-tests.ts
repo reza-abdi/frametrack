@@ -14,7 +14,8 @@ if (missing.length) {
   process.exit(1);
 }
 
-const result = spawnSync("npx.cmd", ["playwright", "test"], {
+const npx = process.platform === "win32" ? "npx.cmd" : "npx";
+const result = spawnSync(npx, ["playwright", "test"], {
   env: process.env,
   stdio: "inherit",
   shell: false,
