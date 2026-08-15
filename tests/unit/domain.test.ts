@@ -13,6 +13,7 @@ import {
   toDisplayCase,
 } from "../../src/lib/normalize-label";
 import { generatePairingCode, PAIRING_TTL_MS } from "../../src/lib/pairing";
+import { safeErrorType } from "../../src/lib/logger";
 
 test("label normalization preserves canonical spelling", () => {
   const known = ["Ray-Ban", "Tiffany & Co."];
@@ -45,6 +46,11 @@ test("pairing codes use the unambiguous alphabet and configured TTL", () => {
   assert.equal(codes.size, 40);
   for (const code of codes) assert.match(code, /^[A-HJ-NP-Z2-9]{6}$/);
   assert.equal(PAIRING_TTL_MS, 30 * 60 * 1000);
+});
+
+test("structured errors expose only a safe error class", () => {
+  assert.equal(safeErrorType(new TypeError("secret detail")), "TypeError");
+  assert.equal(safeErrorType("database password"), "UnknownError");
 });
 
 test("inventory statistics include exact range boundaries", () => {
