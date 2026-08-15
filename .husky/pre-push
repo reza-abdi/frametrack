@@ -1,3 +1,0 @@
-# Full-project review before push: lint + typecheck.
-npm run lint
-npm run typecheck

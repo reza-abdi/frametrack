@@ -1,2 +1,0 @@
-# Format staged files and run ESLint fixes before each commit.
-npx lint-staged
