@@ -9,6 +9,7 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/unit/*.test.ts",
+    "test:integration": "tsx scripts/run-integration-tests.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "husky",
